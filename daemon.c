@@ -256,9 +256,9 @@ daemon_t *daemon_create(uint32_t ip, uint16_t port, uint16_t slots, uint8_t tick
 	// private variables
 	daemon->server_fd = -1;
 	daemon->client_fd = malloc(slots * sizeof(*daemon->client_fd));
-    for (i=0;i<slots;i++) {
-    	daemon->client_fd[i] = -1;
-    }
+	for (i=0;i<slots;i++) {
+		daemon->client_fd[i] = -1;
+	}
 	// public functions
 	daemon->disconnect = daemon_disconnect;
 	daemon->read = daemon_read;
