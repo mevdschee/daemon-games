@@ -1,6 +1,6 @@
 /*
  ============================================================================
- Name        : daemon_snake.c
+ Name        : daemon-snake.c
  Description : Multi-user console games for GNU/Linux
  Author      : Maurits van der Schee <maurits@vdschee.nl>
  URL         : https://github.com/mevdschee/daemon-games
