@@ -3,7 +3,7 @@
  Name        : daemon_snake.c
  Description : Multi-user console games for GNU/Linux
  Author      : Maurits van der Schee <maurits@vdschee.nl>
- URL         : https://github.com/mevdschee/daemon_games
+ URL         : https://github.com/mevdschee/daemon-games
  ============================================================================
  */
 #define _XOPEN_SOURCE 500
@@ -38,7 +38,7 @@ void on_connect(daemon_t *daemon, int client)
 	int nbytes;
 	char *bytes;
 
-	bytes = "\e[30m\e[41m  \e[42m  \e[43m  \e[0m\e[30m\n\e[41m  \e[41m  \e[42m  \e[0m";
+	bytes = "\e[30m\e[41m''\e[42m: \e[42m  \e[0m\e[30m\n\e[41m  \e[41m  \e[42m  \e[0m";
 	nbytes = strlen(bytes);
 
 	daemon->write(daemon,client,bytes,nbytes);

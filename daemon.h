@@ -3,7 +3,7 @@
  Name        : daemon.h
  Description : Simple single threaded TCP daemon
  Author      : Maurits van der Schee <maurits@vdschee.nl>
- URL         : https://github.com/mevdschee/daemon_games
+ URL         : https://github.com/mevdschee/daemon-games
  ============================================================================
  */
 
