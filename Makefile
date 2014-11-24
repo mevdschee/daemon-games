@@ -2,9 +2,11 @@ CFLAGS += -std=c99
 
 .PHONY: all clean
 
-all: daemon-snake
+all: snake-daemon tetris-daemon
 
-daemon-snake: daemon-snake.c daemon.c
+snake-daemon: snake-daemon.c daemon.c
+
+tetris-daemon: tetris-daemon.c daemon.c
 
 clean:
-	rm -f daemon-snake
+	rm -f snake-daemon tetris-daemon
