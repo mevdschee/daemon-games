@@ -1,6 +1,6 @@
 /*
  ============================================================================
- Name        : tetris-daemon.c
+ Name        : tetrisd.c
  Description : Multi-user console tetris game for GNU/Linux
  Author      : Maurits van der Schee <maurits@vdschee.nl>
  URL         : https://github.com/mevdschee/daemon-games
