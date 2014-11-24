@@ -15,6 +15,6 @@ Multi-user console games for GNU/Linux
 git clone https://github.com/mevdschee/daemon-games
 cd daemon-games
 make
-./snake-daemon 9000
+./snaked 9000
 ./client.sh 0 9000
 ```
