@@ -4,7 +4,7 @@ CFLAGS += -std=c99
 
 all: daemon-snake
 
-daemon_snake: daemon-snake.c daemon.c
+daemon-snake: daemon-snake.c daemon.c
 
 clean:
 	rm -f daemon-snake
