@@ -24,6 +24,7 @@ struct daemon_t {
 	uint16_t slots;
 	uint8_t ticks;
 	// public variables
+	void *context;
 	struct sockaddr_in server_address;
 	struct sockaddr_in *client_address;
 	// private variables
@@ -44,5 +45,9 @@ struct daemon_t {
 
 daemon_t *daemon_create(uint32_t ip, uint16_t port, uint16_t slots, uint8_t ticks);
 bool daemon_run(daemon_t *daemon);
+
+void daemon_disconnect(daemon_t *daemon, int client);
+int daemon_read(daemon_t *daemon, int client, char *bytes, int nbytes);
+int daemon_write(daemon_t *daemon, int client, char *bytes, int nbytes);
 
 #endif /* DAEMON_H_ */

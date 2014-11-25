@@ -31,26 +31,24 @@ void daemon_disconnect(daemon_t *daemon, int client)
 int daemon_read(daemon_t *daemon, int client, char *bytes, int nbytes)
 {
 	int result;
-
 	result = read(daemon->client_fd[client], bytes, nbytes);
-	if (result == 0) {
+	if (result <= 0) {
 		daemon_disconnect(daemon,client);
-	} else if (result < 0) {
-		if (errno == ECONNABORTED) {
-			daemon_disconnect(daemon,client);
-		}
-		fprintf(stderr, "read failed\n");
-		daemon_disconnect(daemon,client);
+		return -1;
 	}
 	return result;
 }
 
-void daemon_write(daemon_t *daemon, int client, char *bytes, int nbytes)
+int daemon_write(daemon_t *daemon, int client, char *bytes, int nbytes)
 {
-	if (write(daemon->client_fd[client], bytes, nbytes) < nbytes) {
-		fprintf(stderr, "write failed\n");
+	int result;
+
+	result = write(daemon->client_fd[client], bytes, nbytes);
+	if (result < nbytes) {
 		daemon_disconnect(daemon,client);
+		return -1;
 	}
+	return result;
 }
 
 bool daemon_listen(daemon_t *daemon)
@@ -208,9 +206,9 @@ void daemon_on_data(daemon_t *daemon, int client)
 	fprintf(stdout,"#%d",client);
 	fflush(stdout);
 
-	nbytes = daemon->read(daemon, client, bytes, sizeof(bytes));
+	nbytes = daemon_read(daemon, client, bytes, sizeof(bytes));
 	if (nbytes) {
-		daemon->write(daemon, client, bytes, nbytes);
+		daemon_write(daemon, client, bytes, nbytes);
 	}
 }
 
@@ -228,7 +226,7 @@ void daemon_on_connect(daemon_t *daemon, int client)
 	bytes = "Welcome\n";
 	nbytes = strlen(bytes);
 
-	daemon->write(daemon,client,bytes,nbytes);
+	daemon_write(daemon,client,bytes,nbytes);
 }
 
 void daemon_on_disconnect(daemon_t *daemon, int client)
@@ -259,10 +257,6 @@ daemon_t *daemon_create(uint32_t ip, uint16_t port, uint16_t slots, uint8_t tick
 	for (i=0;i<slots;i++) {
 		daemon->client_fd[i] = -1;
 	}
-	// public functions
-	daemon->disconnect = daemon_disconnect;
-	daemon->read = daemon_read;
-	daemon->write = daemon_write;
 	// event handlers
 	daemon->on_tick = daemon_on_tick;
 	daemon->on_data = daemon_on_data;

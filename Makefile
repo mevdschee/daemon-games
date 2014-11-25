@@ -4,7 +4,7 @@ CFLAGS += -std=c99
 
 all: snaked tetrisd
 
-snaked: snaked.c daemon.c
+snaked: snaked.c strbuf.c daemon.c
 
 tetrisd: tetrisd.c daemon.c
 
