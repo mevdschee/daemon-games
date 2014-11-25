@@ -32,10 +32,6 @@ struct daemon_t {
 	int *client_fd;
 	fd_set fds;
 	struct timeval lasttick;
-	// public functions
-	void (*disconnect)(daemon_t *daemon, int client);
-	int (*read)(daemon_t *daemon, int client, char *bytes, int nbytes);
-	void (*write)(daemon_t *daemon, int client, char *bytes, int nbytes);
 	// event handlers
 	void (*on_connect)(daemon_t *daemon, int client);
 	void (*on_disconnect)(daemon_t *daemon, int client);
@@ -46,6 +42,7 @@ struct daemon_t {
 daemon_t *daemon_create(uint32_t ip, uint16_t port, uint16_t slots, uint8_t ticks);
 bool daemon_run(daemon_t *daemon);
 
+// public functions
 void daemon_disconnect(daemon_t *daemon, int client);
 int daemon_read(daemon_t *daemon, int client, char *bytes, int nbytes);
 int daemon_write(daemon_t *daemon, int client, char *bytes, int nbytes);
