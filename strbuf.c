@@ -10,7 +10,7 @@ strbuf_t *strbuf_create()
 	strbuf_t *sb = malloc(sizeof(strbuf_t));
 	sb->size = 1024;
 	sb->buffer = malloc(sb->size);
-	memset(sb->buffer,0,sb->size);
+	sb->buffer[0] = 0;
 	return sb;
 }
 
@@ -31,8 +31,6 @@ int strbuf_append_str(strbuf_t *sb, char *str, size_t len)
 		if (new == NULL) {
 			return -1;
 		}
-		memcpy(new, sb->buffer, sb->size);
-		memset(new+sb->size, 0, sb->size);
 		sb->buffer = new;
 		sb->size *= 2;
 	}
@@ -42,7 +40,7 @@ int strbuf_append_str(strbuf_t *sb, char *str, size_t len)
 
 int strbuf_vappend(strbuf_t *sb, const char *fmt, va_list ap)
 {
-    int n;
+    int n, result;
     int size = 1024; /* Guess we need no more than 1024 bytes */
     char *p, *np;
 
@@ -51,6 +49,7 @@ int strbuf_vappend(strbuf_t *sb, const char *fmt, va_list ap)
     	return -1;
     }
 
+    result = -1;
     while (1) {
 
         /* Try to print in the allocated space */
@@ -60,16 +59,14 @@ int strbuf_vappend(strbuf_t *sb, const char *fmt, va_list ap)
         /* Check error code */
 
         if (n < 0) {
-            free(p);
-            return -1;
+        	break;
         }
 
         /* If that worked, return the string */
 
         if (n < size) {
-        	int res = strbuf_append_str(sb,p,n);
-        	free(p);
-        	return res;
+        	result = strbuf_append_str(sb,p,n);
+        	break;
         }
 
         /* Else try again with more space */
@@ -78,13 +75,13 @@ int strbuf_vappend(strbuf_t *sb, const char *fmt, va_list ap)
 
         np = realloc(p, size);
         if (np == NULL) {
-            free(p);
-            return -1;
+            break;
         } else {
             p = np;
         }
     }
-    return -1;
+    free(p);
+    return result;
 }
 
 int strbuf_append(strbuf_t *sb, const char *fmt, ...)

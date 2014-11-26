@@ -1,7 +1,7 @@
 #!/bin/bash
 user_interrupt(){
 stty icanon echo
-echo -e "\033[0m"
+echo -e "\e[?25h\033[0m"
 }
 stty -icanon -echo
 trap user_interrupt SIGINT

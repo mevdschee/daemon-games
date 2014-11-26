@@ -24,31 +24,35 @@ struct snake_position_t {
 };
 
 struct snake_player_t {
-	int number;
+	bool alive;
+	int length;
+	char direction;
 	struct snake_position_t head, tail;
 };
 
 struct snake_t {
+	int nplayers;
 	struct snake_player_t *players;
 	int width;
 	int height;
-	int *field;
+	char *field;
 };
 
-int snake_get(snake_t *snake, int field, int x, int y)
+char snake_get(snake_t *snake, int field, int x, int y)
 {
 	return *(snake->field + field*snake->width*snake->height + y*snake->width + x);
 }
 
-void snake_set(snake_t *snake, int field, int x, int y, int value)
+void snake_set(snake_t *snake, int field, int x, int y, char c)
 {
-	*(snake->field + field*snake->width*snake->height + y*snake->width + x) = value;
+	*(snake->field + field*snake->width*snake->height + y*snake->width + x) = c;
 }
 
 snake_t *snake_create(int width, int height, int slots)
 {
 	snake_t *snake = malloc(sizeof(*snake));
-	snake->players = malloc(slots*sizeof(*snake->players));
+	snake->nplayers = slots;
+	snake->players = malloc(snake->nplayers*sizeof(*snake->players));
 	snake->width = width;
 	snake->height = height;
 	size_t size = 3*snake->width*snake->height*sizeof(*snake->field);
@@ -64,40 +68,102 @@ void snake_destroy(snake_t *snake)
 	free(snake);
 }
 
-void on_tick(daemon_t *daemon, int tick)
+void snake_next_frame(snake_t *snake)
 {
-	snake_t *snake = (snake_t *)daemon->context;
+	int x,y,i;
+	char c;
 
-	int i,x,y,c,p;
+	for (y=0;y<snake->height;y++) {
+		for (x=0;x<snake->width;x++) {
+			c = snake_get(snake,current,x,y);
+			snake_set(snake,previous,x,y,c);
+		}
+	}
+
+	// move tail out of the way
+	for (i=0;i<snake->nplayers;i++) {
+		if (snake->players[i].alive) {
+			snake_set(snake,current,snake->players[i].tail.x,snake->players[i].tail.y,0);
+			switch (snake_get(snake,directions,snake->players[i].tail.x,snake->players[i].tail.y)) {
+				case down: snake->players[i].tail.y+=1;               snake->players[i].tail.y%=snake->height; break;
+				case up:   snake->players[i].tail.y+=snake->height-1; snake->players[i].tail.y%=snake->height; break;
+				case right:snake->players[i].tail.x+=1;               snake->players[i].tail.x%=snake->width;  break;
+				case left: snake->players[i].tail.x+=snake->width-1;  snake->players[i].tail.x%=snake->width;  break;
+			}
+		}
+	}
+
+	// try to move head
+	for (i=0;i<snake->nplayers;i++) {
+		if (snake->players[i].alive) {
+			snake_set(snake,current,snake->players[i].head.x,snake->players[i].head.y,11+i*10);
+			snake_set(snake,current,snake->players[i].tail.x,snake->players[i].tail.y,12+i*10);
+			snake_set(snake,directions,snake->players[i].head.x,snake->players[i].head.y,snake->players[i].direction);
+			switch (snake->players[i].direction) {
+				case down: snake->players[i].head.y+=1;               snake->players[i].head.y%=snake->height; break;
+				case up:   snake->players[i].head.y+=snake->height-1; snake->players[i].head.y%=snake->height; break;
+				case right:snake->players[i].head.x+=1;               snake->players[i].head.x%=snake->width;  break;
+				case left: snake->players[i].head.x+=snake->width-1;  snake->players[i].head.x%=snake->width;  break;
+			}
+			if (snake_get(snake,current,snake->players[i].head.x,snake->players[i].head.y)==0) {
+				snake_set(snake,directions,snake->players[i].head.x,snake->players[i].head.y,snake->players[i].direction);
+				snake_set(snake,current,snake->players[i].head.x,snake->players[i].head.y,10+i*10);
+			} else {
+				// you have hit something
+				snake->players[i].alive = false;
+			}
+
+		}
+	}
+
+}
+
+void snake_get_frame(snake_t *snake, strbuf_t *sb, bool full)
+{
+	int x,y,c,p;
 	int cx=-1,cy=-1;
-	strbuf_t *sb = strbuf_create();
+
+	if (full) {
+		strbuf_append(sb,"\e[?25l\e[2J");
+	}
 
 	for (y=0;y<snake->height;y++) {
 		for (x=0;x<snake->width;x++) {
 			c=snake_get(snake,current,x,y);
 			p=snake_get(snake,previous,x,y);
-			if (c!=p || 1) {
+			if (c!=p || full) {
 				if (cx!=x || cy!=y) { //move cursor
-					strbuf_append(sb,"\e[%d;%dH",y,x*2);
+					strbuf_append(sb,"\e[%d;%dH",y+1,x*2+1);
 				}
 				// draw and increment cx
 				switch(c) {
-					/*case 0:  strbuf_append(sb,"\e[30;40m  "); break;
+					case 0:  strbuf_append(sb,"\e[30;40m  "); break;
 					case 1:  strbuf_append(sb,"\e[31;40m<>"); break;
 					case 10: strbuf_append(sb,"\e[30;41mhh"); break;
 					case 11: strbuf_append(sb,"\e[30;41mbb"); break;
 					case 12: strbuf_append(sb,"\e[30;41mtt"); break;
-					case 21: strbuf_append(sb,"\e[30;41mhh"); break;
-					case 22: strbuf_append(sb,"\e[30;41mbb"); break;
-					case 23: strbuf_append(sb,"\e[30;41mtt"); break;*/
-					default: strbuf_append(sb,"  "); break;
+					case 20: strbuf_append(sb,"\e[30;42mhh"); break;
+					case 21: strbuf_append(sb,"\e[30;42mbb"); break;
+					case 22: strbuf_append(sb,"\e[30;42mtt"); break;
 				}
 				cx++;
-				int value = snake_get(snake,current,x,y);
-				snake_set(snake,previous,x,y,value);
 			}
 		}
 	}
+
+}
+
+void on_tick(daemon_t *daemon, int tick)
+{
+	int i;
+
+	snake_t *snake = (snake_t *)daemon->context;
+
+	snake_next_frame(snake);
+
+	strbuf_t *sb = strbuf_create();
+
+	snake_get_frame(snake, sb, false);
 
 	for(i=0;i<daemon->slots;i++) {
 		if (daemon->client_fd[i]==-1) continue;
@@ -105,21 +171,25 @@ void on_tick(daemon_t *daemon, int tick)
 	}
 
 	strbuf_destroy(sb);
+
 }
 
 void on_data(daemon_t *daemon, int client)
 {
 	snake_t *snake = (snake_t *)daemon->context;
 
-	int nbytes;
-	char bytes[128];
+	int i,nbytes, direction;
+	char bytes[2048];
 
 	nbytes = daemon_read(daemon, client, bytes, sizeof(bytes));
-	if (nbytes) {
-		if (bytes[0]=='q') {
-			daemon_disconnect(daemon, client);
-		} else {
-			daemon_write(daemon, client, bytes, nbytes);
+	for (i=0;i<nbytes;i++) {
+		direction = snake_get(snake,directions,snake->players[client].head.x,snake->players[client].head.y);
+		switch (bytes[i]) {
+			case 'q': daemon_disconnect(daemon, client); break;
+			case 'w': if (direction!=down)  snake->players[client].direction = up;    break;
+			case 'a': if (direction!=right) snake->players[client].direction = left;  break;
+			case 's': if (direction!=up)    snake->players[client].direction = down;  break;
+			case 'd': if (direction!=left)  snake->players[client].direction = right; break;
 		}
 	}
 }
@@ -128,20 +198,31 @@ void on_connect(daemon_t *daemon, int client)
 {
 	snake_t *snake = (snake_t *)daemon->context;
 
-	int nbytes;
-	char *bytes;
+	if (!snake->players[client].length) {
+		snake->players[client].alive = true;
+		snake->players[client].head.x = 0;
+		snake->players[client].head.y = 1;
+		snake->players[client].tail.x = 0;
+		snake->players[client].tail.y = 0;
+		snake->players[client].length = 2;
+		snake->players[client].direction = down;
+		snake_set(snake,directions,snake->players[client].tail.x,snake->players[client].tail.y,down);
+	}
 
-	bytes = "\e[30m\e[41m''\e[42m: \e[42m  \e[0m\e[30m\n\e[41m  \e[41m  \e[42m  \e[0m";
-	nbytes = strlen(bytes);
+	strbuf_t *sb = strbuf_create();
 
-	daemon_write(daemon,client,bytes,nbytes);
+	snake_get_frame(snake, sb, true);
+
+	daemon_write(daemon,client,sb->buffer,strlen(sb->buffer)+1);
+
+	strbuf_destroy(sb);
 }
 
 void on_disconnect(daemon_t *daemon, int client)
 {
 	snake_t *snake = (snake_t *)daemon->context;
 
-	printf("disconnect %d\n",client);
+	snake->players[client].alive = false;
 }
 
 int main(int argc, char ** argv)
@@ -158,7 +239,7 @@ int main(int argc, char ** argv)
 		return EXIT_FAILURE;
 	}
 
-	int ip = 0, slots = 2, ticks = 10, width = 40, height = 20;
+	int ip = 0, slots = 2, ticks = 4, width = 40, height = 20;
 
 
 
