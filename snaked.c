@@ -21,6 +21,7 @@ enum fields { current, previous, directions };
 
 struct snake_position_t {
 	int x,y;
+	int px,py;
 };
 
 struct snake_player_t {
@@ -68,75 +69,96 @@ void snake_destroy(snake_t *snake)
 	free(snake);
 }
 
-void snake_next_frame(snake_t *snake)
+void snake_move_tails(snake_t *snake)
 {
-	int x,y,w,h,i;
-	char c;
-
-	// memcpy?
-	for (y=0;y<snake->height;y++) {
-		for (x=0;x<snake->width;x++) {
-			c = snake_get(snake,current,x,y);
-			snake_set(snake,previous,x,y,c);
-		}
-	}
-
-	w = snake->width;
-	h = snake->height;
+	int player;
+	struct snake_position_t head, tail;
 
 	// move tail out of the way (if not scored)
-	for (i=0;i<snake->nplayers;i++) {
-		if (snake->players[i].alive) {
-			x = snake->players[i].tail.x;
-			y = snake->players[i].tail.y;
-			if (snake->players[i].length>1) {
-				snake_set(snake,current,x,y,0);
+	for (player=0;player<snake->nplayers;player++) {
+		if (snake->players[player].alive) {
+			head = snake->players[player].head;
+			tail = snake->players[player].tail;
+			// did we move?
+			if (snake_get(snake,current,head.x,head.y)==0) {
+				// update field
+				snake_set(snake,current,tail.px,tail.py,0);
+				snake_set(snake,current,tail.x,tail.y,12+player*10);
 			}
-			switch (snake_get(snake,directions,x,y)) {
-				case down: y=(y+1)%h;   break;
-				case up:   y=(y+h-1)%h; break;
-				case right:x=(x+1)%w;   break;
-				case left: x=(x+w-1)%w; break;
-			}
-			if (snake->players[i].length>1) {
-				snake_set(snake,current,x,y,12+i*10);
-			}
-			snake->players[i].tail.x = x;
-			snake->players[i].tail.y = y;
 		}
 	}
+}
+
+void snake_move_heads(snake_t *snake)
+{
+	int player;
+	char direction;
+	struct snake_position_t head;
 
 	// try to move head
-	for (i=0;i<snake->nplayers;i++) {
-		if (snake->players[i].alive) {
-			x = snake->players[i].head.x;
-			y = snake->players[i].head.y;
-			if (snake->players[i].length>1) {
-				if (snake->players[i].length>2) {
-					snake_set(snake,current,x,y,11+i*10);
+	for (player=0;player<snake->nplayers;player++) {
+		if (snake->players[player].alive) {
+			head = snake->players[player].head;
+			direction = snake->players[player].direction;
+			// if we hit something not that cannot be eaten
+			if (snake_get(snake,current,head.x,head.y)<10) {
+				snake_set(snake,directions,head.px,head.py,direction);
+				snake_set(snake,directions,head.x,head.x,direction);
+				if (snake->players[player].length>2) {
+					snake_set(snake,current,head.px,head.py,11+player*10);
 				}
-				snake_set(snake,directions,x,y,snake->players[i].direction);
-			} else if (snake->players[i].length==1) {
-				snake_set(snake,current,x,y,0);
-			}
-			switch (snake->players[i].direction) {
-				case down: y=(y+1)%h;   break;
-				case up:   y=(y+h-1)%h; break;
-				case right:x=(x+1)%w;   break;
-				case left: x=(x+w-1)%w; break;
-			}
-			if (snake_get(snake,current,x,y)==0) {
-				snake_set(snake,directions,x,y,snake->players[i].direction);
-				snake_set(snake,current,x,y,10+i*10);
+				snake_set(snake,current,head.x,head.y,10+player*10);
 			} else {
-				// you have hit something
-				snake->players[i].alive = false;
+				// you have hit something that kills you
+				snake->players[player].alive = false;
 			}
-			snake->players[i].head.x = x;
-			snake->players[i].head.y = y;
 		}
 	}
+}
 
+void snake_update_coordinate(snake_t *snake, struct snake_position_t *p, int w, int h, char direction)
+{
+	p->px = p->x;
+	p->py = p->y;
+
+	switch (direction) {
+		case down: p->y=(p->py+1)%h;   break;
+		case up:   p->y=(p->py+h-1)%h; break;
+		case right:p->x=(p->px+1)%w;   break;
+		case left: p->x=(p->px+w-1)%w; break;
+	}
+}
+
+void snake_update_coordinates(snake_t *snake)
+{
+	int player,width,height;
+	char tail_direction,head_direction;
+
+	width = snake->width;
+	height = snake->height;
+
+	// update head and tail coordinates
+	for (player=0;player<snake->nplayers;player++) {
+		if (snake->players[player].alive) {
+			tail_direction = snake_get(snake,directions,snake->players[player].tail.x,snake->players[player].tail.y);
+			head_direction = snake->players[player].direction;
+			snake_update_coordinate(snake,&snake->players[player].tail,width,height,tail_direction);
+			snake_update_coordinate(snake,&snake->players[player].head,width,height,head_direction);
+		}
+	}
+}
+
+void snake_next_frame(snake_t *snake)
+{
+	size_t field_size;
+
+	field_size = snake->width*snake->height*sizeof(*snake->field);
+	memcpy(snake->field+previous*field_size,snake->field+current*field_size,field_size);
+	printf("mem: %ld <- %ld \n",(unsigned long)snake->field+previous*field_size,(unsigned long)snake->field+current*field_size);
+
+	snake_update_coordinates(snake);
+	snake_move_tails(snake);
+	snake_move_heads(snake);
 }
 
 void snake_get_frame(snake_t *snake, strbuf_t *sb, bool full)
@@ -198,12 +220,14 @@ void on_data(daemon_t *daemon, int client)
 {
 	snake_t *snake = (snake_t *)daemon->context;
 
-	int i,nbytes, direction;
+	int i,nbytes;
+	char direction;
 	char bytes[2048];
 
 	nbytes = daemon_read(daemon, client, bytes, sizeof(bytes));
 	for (i=0;i<nbytes;i++) {
 		direction = snake_get(snake,directions,snake->players[client].head.x,snake->players[client].head.y);
+		printf("%d %d %d\n",bytes[i],direction,snake->players[client].direction);
 		switch (bytes[i]) {
 			case 'q': daemon_disconnect(daemon, client); break;
 			case 'w': if (direction!=down)  snake->players[client].direction = up;    break;
@@ -211,7 +235,9 @@ void on_data(daemon_t *daemon, int client)
 			case 's': if (direction!=up)    snake->players[client].direction = down;  break;
 			case 'd': if (direction!=left)  snake->players[client].direction = right; break;
 		}
+		break;
 	}
+	printf("%d\n",snake->players[client].direction);
 }
 
 void on_connect(daemon_t *daemon, int client)
@@ -221,12 +247,17 @@ void on_connect(daemon_t *daemon, int client)
 	if (!snake->players[client].length) {
 		snake->players[client].alive = true;
 		snake->players[client].head.x = 0;
-		snake->players[client].head.y = 0;
+		snake->players[client].head.y = 1;
+		snake->players[client].head.px = 0;
+		snake->players[client].head.py = 1;
 		snake->players[client].tail.x = 0;
 		snake->players[client].tail.y = 0;
-		snake->players[client].length = 1;
+		snake->players[client].tail.px = 0;
+		snake->players[client].tail.py = 0;
+		snake->players[client].length = 2;
 		snake->players[client].direction = down;
 		snake_set(snake,directions,snake->players[client].head.x,snake->players[client].head.y,down);
+		snake_set(snake,directions,snake->players[client].tail.x,snake->players[client].tail.y,down);
 	}
 
 	strbuf_t *sb = strbuf_create();
@@ -259,7 +290,7 @@ int main(int argc, char ** argv)
 		return EXIT_FAILURE;
 	}
 
-	int ip = 0, slots = 2, ticks = 4, width = 40, height = 20;
+	int ip = 0, slots = 2, ticks = 10, width = 40, height = 20;
 
 
 
