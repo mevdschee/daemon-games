@@ -23,12 +23,12 @@ void on_data(daemon_t *daemon, int client)
 	int nbytes;
 	char bytes[128];
 
-	nbytes = daemon->read(daemon, client, bytes, sizeof(bytes));
+	nbytes = daemon_read(daemon, client, bytes, sizeof(bytes));
 	if (nbytes) {
 		if (bytes[0]=='q') {
-			daemon->disconnect(daemon, client);
+			daemon_disconnect(daemon, client);
 		} else {
-			daemon->write(daemon, client, bytes, nbytes);
+			daemon_write(daemon, client, bytes, nbytes);
 		}
 	}
 }
@@ -41,7 +41,7 @@ void on_connect(daemon_t *daemon, int client)
 	bytes = "\e[30m\e[41m''\e[42m: \e[42m  \e[0m\e[30m\n\e[41m  \e[41m  \e[42m  \e[0m";
 	nbytes = strlen(bytes);
 
-	daemon->write(daemon,client,bytes,nbytes);
+	daemon_write(daemon,client,bytes,nbytes);
 }
 
 void on_disconnect(daemon_t *daemon, int client)
