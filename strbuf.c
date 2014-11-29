@@ -12,7 +12,7 @@ strbuf_t *strbuf_create()
 	if (sb == NULL) {
 		return NULL;
 	}
-	sb->size = 1;
+	sb->size = 1024;
 	sb->buffer = malloc(sb->size);
 	if (sb->buffer == NULL) {
 		free(sb);
