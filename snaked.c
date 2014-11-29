@@ -56,7 +56,7 @@ snake_t *snake_create(int width, int height, int slots)
 	snake->players = malloc(snake->nplayers*sizeof(*snake->players));
 	snake->width = width;
 	snake->height = height;
-	size_t size = 3*snake->width*snake->height*sizeof(*snake->field);
+	size_t size = 3*width*height*sizeof(*snake->field);
 	snake->field = malloc(size);
 	memset(snake->field,0,size);
 	return snake;
@@ -82,6 +82,7 @@ void snake_move_tails(snake_t *snake)
 			// did we move?
 			if (snake_get(snake,current,head.x,head.y)==0) {
 				// update field
+				snake_set(snake,directions,tail.px,tail.py,0);
 				snake_set(snake,current,tail.px,tail.py,0);
 				snake_set(snake,current,tail.x,tail.y,12+player*10);
 			}
@@ -100,10 +101,10 @@ void snake_move_heads(snake_t *snake)
 		if (snake->players[player].alive) {
 			head = snake->players[player].head;
 			direction = snake->players[player].direction;
-			// if we hit something not that cannot be eaten
+			// if we hit something not that can be eaten
 			if (snake_get(snake,current,head.x,head.y)<10) {
 				snake_set(snake,directions,head.px,head.py,direction);
-				snake_set(snake,directions,head.x,head.x,direction);
+				snake_set(snake,directions,head.x,head.y,direction);
 				if (snake->players[player].length>2) {
 					snake_set(snake,current,head.px,head.py,11+player*10);
 				}
@@ -154,7 +155,6 @@ void snake_next_frame(snake_t *snake)
 
 	field_size = snake->width*snake->height*sizeof(*snake->field);
 	memcpy(snake->field+previous*field_size,snake->field+current*field_size,field_size);
-	printf("mem: %ld <- %ld \n",(unsigned long)snake->field+previous*field_size,(unsigned long)snake->field+current*field_size);
 
 	snake_update_coordinates(snake);
 	snake_move_tails(snake);
@@ -227,7 +227,6 @@ void on_data(daemon_t *daemon, int client)
 	nbytes = daemon_read(daemon, client, bytes, sizeof(bytes));
 	for (i=0;i<nbytes;i++) {
 		direction = snake_get(snake,directions,snake->players[client].head.x,snake->players[client].head.y);
-		printf("%d %d %d\n",bytes[i],direction,snake->players[client].direction);
 		switch (bytes[i]) {
 			case 'q': daemon_disconnect(daemon, client); break;
 			case 'w': if (direction!=down)  snake->players[client].direction = up;    break;
@@ -237,7 +236,6 @@ void on_data(daemon_t *daemon, int client)
 		}
 		break;
 	}
-	printf("%d\n",snake->players[client].direction);
 }
 
 void on_connect(daemon_t *daemon, int client)

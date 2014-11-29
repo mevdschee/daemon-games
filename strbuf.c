@@ -2,14 +2,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "strbuf.h"
 
 strbuf_t *strbuf_create()
 {
-	strbuf_t *sb = malloc(sizeof(strbuf_t));
-	sb->size = 1024;
+	strbuf_t *sb = malloc(sizeof(*sb));
+	if (sb == NULL) {
+		return NULL;
+	}
+	sb->size = 1;
 	sb->buffer = malloc(sb->size);
+	if (sb->buffer == NULL) {
+		free(sb);
+		return NULL;
+	}
 	sb->buffer[0] = 0;
 	return sb;
 }
@@ -22,18 +30,20 @@ void strbuf_destroy(strbuf_t *sb)
 
 int strbuf_append_str(strbuf_t *sb, char *str, size_t len)
 {
+	size_t size = sb->size;
 	size_t pos = strlen(sb->buffer);
-	if (pos>=sb->size) {
-		return -1;
+
+	while (size < pos+len+1) {
+		size *= 2;
 	}
-	if (sb->size-pos<len+1) {
-		char *new = realloc(sb->buffer, sb->size*2);
-		if (new == NULL) {
+	if (size > sb->size) {
+		sb->buffer = realloc(sb->buffer, size);
+		sb->size = size;
+		if (sb->buffer == NULL) {
 			return -1;
 		}
-		sb->buffer = new;
-		sb->size *= 2;
 	}
+
 	memcpy(sb->buffer+pos,str,len+1);
 	return len;
 }
@@ -73,14 +83,14 @@ int strbuf_vappend(strbuf_t *sb, const char *fmt, va_list ap)
 
         size = n + 1;       /* Precisely what is needed */
 
-        np = realloc(p, size);
-        if (np == NULL) {
+        p = realloc(p, size);
+        if (p == NULL) {
             break;
-        } else {
-            p = np;
         }
     }
-    free(p);
+    if (p != NULL) {
+    	free(p);
+    }
     return result;
 }
 
