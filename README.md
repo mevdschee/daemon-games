@@ -1,6 +1,8 @@
 daemon-games
 ============
 
+![screenshot](http://www.leaseweblabs.com/wp-content/uploads/2014/11/snaked.png)
+
 Multi-user console games for GNU/Linux
 
 ### Requirements
