@@ -122,6 +122,10 @@ void snake_move_tails(snake_t *snake)
 				snake_set_direction(snake,previous_tail,none);
 				snake_set_field(snake,previous_tail,0);
 				snake_set_field(snake,tail,12+player*10);
+			} else if (snake_get_field(snake,head)==1) {
+				// food, increase length, no tail move
+				snake->players[player].length++;
+				*tail = *previous_tail;
 			}
 		}
 	}
@@ -206,16 +210,22 @@ void snake_next_frame(snake_t *snake)
 
 void snake_get_frame(snake_t *snake, strbuf_t *sb, bool full)
 {
-	int x, y, c, p;
-	int cx=-1, cy=-1;
+	int x, y, cx, cy;
+	char c, d, p;
 
 	if (full) {
 		strbuf_append(sb,"\e[?25l\e[2J");
 	}
+	strbuf_append(sb,"\e[H");
 
+	//down, up, right, left
+	char heads[] = "..'' :: ";
+
+	cx = cy = 0;
 	for (y=0;y<snake->height;y++) {
 		for (x=0;x<snake->width;x++) {
 			c=snake_get(snake->fields,snake->width,snake->height,x,y);
+			d=snake_get(snake->directions,snake->width,snake->height,x,y);
 			p=snake_get(snake->previous_fields,snake->width,snake->height,x,y);
 			if (c!=p || full) {
 				if (x==0 && y==cy+1) { // new line?
@@ -225,14 +235,14 @@ void snake_get_frame(snake_t *snake, strbuf_t *sb, bool full)
 				}
 				// draw and increment cx
 				switch(c) {
-					case 0:  strbuf_append(sb,"\e[30;40m  "); break;
-					case 1:  strbuf_append(sb,"\e[31;40m<>"); break;
-					case 10: strbuf_append(sb,"\e[30;41mhh"); break;
-					case 11: strbuf_append(sb,"\e[30;41mbb"); break;
-					case 12: strbuf_append(sb,"\e[30;41mtt"); break;
-					case 20: strbuf_append(sb,"\e[30;42mhh"); break;
-					case 21: strbuf_append(sb,"\e[30;42mbb"); break;
-					case 22: strbuf_append(sb,"\e[30;42mtt"); break;
+					case 0:  strbuf_append(sb,"\e[0;30;40m  "); break;
+					case 1:  strbuf_append(sb,"\e[1;37;40m<>"); break;
+					case 10: strbuf_append(sb,"\e[0;30;41m%c%c",heads[(d-1)*2],heads[(d-1)*2+1]); break;
+					case 11: strbuf_append(sb,"\e[0;30;41m  "); break;
+					case 12: strbuf_append(sb,"\e[0;30;41m  "); break;
+					case 20: strbuf_append(sb,"\e[0;30;42m%c%c",heads[(d-1)*2],heads[(d-1)*2+1]); break;
+					case 21: strbuf_append(sb,"\e[0;30;42m  "); break;
+					case 22: strbuf_append(sb,"\e[0;30;42m  "); break;
 				}
 				cx++;
 			}
@@ -250,6 +260,14 @@ void on_tick(daemon_t *daemon, int tick)
 	strbuf_t *sb = strbuf_create();
 
 	snake_next_frame(snake);
+
+	if (tick%100==0) {
+		int x = rand()%snake->width;
+		int y = rand()%snake->height;
+		if (snake_get(snake->fields,snake->width,snake->height,x,y)==0) {
+			snake_set(snake->fields,snake->width,snake->height,x,y,1);
+		}
+	}
 
 	snake_get_frame(snake, sb, false);
 
