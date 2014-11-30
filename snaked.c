@@ -139,7 +139,7 @@ void snake_move_heads(snake_t *snake)
 			head = &snake->players[player].head;
 			previous_head = &snake->players[player].previous_head;
 			direction = snake->players[player].direction;
-			// if we hit something not that can be eaten
+			// if we hit something that can be eaten
 			if (snake_get_field(snake,head)<10) {
 				snake_set_direction(snake,previous_head,direction);
 				snake_set_direction(snake,head,direction);
@@ -218,7 +218,9 @@ void snake_get_frame(snake_t *snake, strbuf_t *sb, bool full)
 			c=snake_get(snake->fields,snake->width,snake->height,x,y);
 			p=snake_get(snake->previous_fields,snake->width,snake->height,x,y);
 			if (c!=p || full) {
-				if (cx!=x || cy!=y) { //move cursor
+				if (x==0 && y==cy+1) { // new line?
+					strbuf_append(sb,"\n");
+				} else if (cx!=x || cy!=y) { // move cursor
 					strbuf_append(sb,"\e[%d;%dH",y+1,x*2+1);
 				}
 				// draw and increment cx
@@ -297,8 +299,8 @@ void on_connect(daemon_t *daemon, int client)
 		snake->players[client].previous_tail.y = 0;
 		snake->players[client].length = 2;
 		snake->players[client].direction = down;
-		snake_set_direction(snake, &snake->players[client].head,down);
-		snake_set_direction(snake, &snake->players[client].tail,down);
+		snake_set_direction(snake, &snake->players[client].head, down);
+		snake_set_direction(snake, &snake->players[client].tail, down);
 	}
 
 	strbuf_t *sb = strbuf_create();
