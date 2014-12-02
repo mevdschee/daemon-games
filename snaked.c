@@ -218,14 +218,13 @@ void snake_get_frame(snake_t *snake, strbuf_t *sb, bool full)
 	}
 	strbuf_append(sb,"\e[H");
 
-	//down, up, right, left
-	char heads[] = "..'' :: ";
+	// none, down, up, right, left
+	char heads[] = "  ..'' :: ";
 
 	cx = cy = 0;
 	for (y=0;y<snake->height;y++) {
 		for (x=0;x<snake->width;x++) {
 			c=snake_get(snake->fields,snake->width,snake->height,x,y);
-			d=snake_get(snake->directions,snake->width,snake->height,x,y);
 			p=snake_get(snake->previous_fields,snake->width,snake->height,x,y);
 			if (c!=p || full) {
 				if (x==0 && y==cy+1) { // new line?
@@ -233,14 +232,16 @@ void snake_get_frame(snake_t *snake, strbuf_t *sb, bool full)
 				} else if (cx!=x || cy!=y) { // move cursor
 					strbuf_append(sb,"\e[%d;%dH",y+1,x*2+1);
 				}
+				// get direction
+				d=snake_get(snake->directions,snake->width,snake->height,x,y);
 				// draw and increment cx
 				switch(c) {
 					case 0:  strbuf_append(sb,"\e[0;30;40m  "); break;
 					case 1:  strbuf_append(sb,"\e[1;37;40m<>"); break;
-					case 10: strbuf_append(sb,"\e[0;30;41m%c%c",heads[(d-1)*2],heads[(d-1)*2+1]); break;
+					case 10: strbuf_append(sb,"\e[0;30;41m%c%c",heads[d*2],heads[d*2+1]); break;
 					case 11: strbuf_append(sb,"\e[0;30;41m  "); break;
 					case 12: strbuf_append(sb,"\e[0;30;41m  "); break;
-					case 20: strbuf_append(sb,"\e[0;30;42m%c%c",heads[(d-1)*2],heads[(d-1)*2+1]); break;
+					case 20: strbuf_append(sb,"\e[0;30;42m%c%c",heads[d*2],heads[d*2+1]); break;
 					case 21: strbuf_append(sb,"\e[0;30;42m  "); break;
 					case 22: strbuf_append(sb,"\e[0;30;42m  "); break;
 				}
