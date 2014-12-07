@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "daemon.h"
+#include "lobby.h"
 #include "strbuf.h"
 
 typedef struct snake_t snake_t;
@@ -306,15 +307,17 @@ void on_connect(daemon_t *daemon, int client)
 {
 	snake_t *snake = (snake_t *)daemon->context;
 
+	int x = client * snake->width / daemon->slots;
+
 	if (!snake->players[client].length) {
 		snake->players[client].alive = true;
-		snake->players[client].head.x = 0;
+		snake->players[client].head.x = x;
 		snake->players[client].head.y = 1;
-		snake->players[client].previous_head.x = 0;
+		snake->players[client].previous_head.x = x;
 		snake->players[client].previous_head.y = 1;
-		snake->players[client].tail.x = 0;
+		snake->players[client].tail.x = x;
 		snake->players[client].tail.y = 0;
-		snake->players[client].previous_tail.x = 0;
+		snake->players[client].previous_tail.x = x;
 		snake->players[client].previous_tail.y = 0;
 		snake->players[client].length = 2;
 		snake->players[client].direction = down;
@@ -338,6 +341,27 @@ void on_disconnect(daemon_t *daemon, int client)
 	snake->players[client].alive = false;
 }
 
+void snake_start_game(daemon_t *daemon)
+{
+	int i, width = 40, height = 20;
+
+	snake_t *snake = snake_create(width, height, daemon->slots);
+	daemon->context = (void *)snake;
+
+    // initialize users from lobby
+
+	for (i=0;i<daemon->slots;i++) {
+		if (daemon->client_fd[i] >= 0) {
+			on_connect(daemon,i);
+		}
+	}
+
+	daemon->on_connect = on_connect;
+	daemon->on_disconnect = on_disconnect;
+	daemon->on_data = on_data;
+	daemon->on_tick = on_tick;
+}
+
 int main(int argc, char ** argv)
 {
 	if (argc < 2) {
@@ -354,17 +378,8 @@ int main(int argc, char ** argv)
 
 	int ip = 0, slots = 2, ticks = 10, width = 40, height = 20;
 
-
-
 	daemon_t *daemon = daemon_create(ip, port, slots, ticks);
-	snake_t *snake = snake_create(width, height, slots);
-
-	daemon->context = (void *)snake;
-
-	daemon->on_connect = on_connect;
-	daemon->on_disconnect = on_disconnect;
-	daemon->on_data = on_data;
-	daemon->on_tick = on_tick;
+	lobby_run(daemon, snake_start_game);
 
 	return daemon_run(daemon)?EXIT_SUCCESS:EXIT_FAILURE;
 }
